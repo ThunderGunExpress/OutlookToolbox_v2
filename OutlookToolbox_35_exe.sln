@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OutlookToolbox_35_exe", "OutlookToolbox_35_exe\OutlookToolbox_35_exe.csproj", "{A6125FEF-47A9-472A-8189-7B9B83EEC983}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A6125FEF-47A9-472A-8189-7B9B83EEC983}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6125FEF-47A9-472A-8189-7B9B83EEC983}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6125FEF-47A9-472A-8189-7B9B83EEC983}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6125FEF-47A9-472A-8189-7B9B83EEC983}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D0021964-B56B-4BFA-99D9-F7215015A509}
+	EndGlobalSection
+EndGlobal
