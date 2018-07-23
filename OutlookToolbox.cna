@@ -1,23 +1,11 @@
 ###
-#This Cobalt Strike Aggressor script will run OutlookToolbox.dll with rundll32
-#I've tested various invalid inputs to see if I could create a user popup or have an unexpected effect
+#This Cobalt Strike Aggressor script will run OutlookToolbox.exe in-memory
+#The OutlookToolbox exe needs to be in the same directory as this cna script and called "OutlookToolbox.exe"
 #However, you should not fully trust this tool,  test in your lab.
-#Be careful of brm function, this script calls it several times.  If the filename isn't specified or there is a mistake in the script an entire directory could be deleted
-#Do NOT set $targetDir = C:\ ... brm could screw up the system
-#I wasn't able to get the wait function to work so I tried to wait for downloads by using on beacon_output_alt, the results are okay.  It appears that it works but the output
-#will not flush and will display multiple times.
 ###
 ###
-#The directory OutlookToolbox will work out of
+#The directory OutlookToolbox will work out of is %APPDATA% except EmailPivot ... This will write to current directory
 ###
-global('$targetDir');
-$targetDir = "C:\\Users\\Public\\Documents";
-
-###
-#DLL Name.  Feel free to change this but if it's set to "" brm will deleted folders.
-#Also, if the $dllName variable name is changed the script could remove directories ... just be careful 
-###
-
 
 #Menu Setup
 popup beacon_bottom {
